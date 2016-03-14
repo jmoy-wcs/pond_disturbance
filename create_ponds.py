@@ -168,7 +168,7 @@ def calculate_territory(landcover):
     return exclude_territory
 
 
-def count_ponds(ponds, year):
+def count_ponds(ponds):
 
     """
     count the current number of beaver ponds
@@ -177,14 +177,14 @@ def count_ponds(ponds, year):
     # sum_ponds = arcpy.Raster(in_raster)
     print 'setting null'
     sum_ponds_set_null = arcpy.sa.SetNull(ponds != 1, 1)
-    sum_ponds_set_null.save('E:/_data/welikia/beaver_ponds/_test/outputs/ponds_set_null_%s.tif' % year)
+    # sum_ponds_set_null.save('E:/_data/welikia/beaver_ponds/_test/outputs/ponds_set_null_%s.tif' % year)
 
     print 'region grouping'
     region_group = arcpy.sa.RegionGroup(in_raster=sum_ponds_set_null,
                                         number_neighbors='EIGHT',
                                         zone_connectivity='CROSS')
 
-    region_group.save('E:/_data/welikia/beaver_ponds/_test/outputs/region_group_%s.tif' % year)
+    # region_group.save('E:/_data/welikia/beaver_ponds/_test/outputs/region_group_%s.tif' % year)
     print 'getting count'
     pond_count = arcpy.GetRasterProperties_management(in_raster=region_group,
                                                       property_type='UNIQUEVALUECOUNT')
@@ -248,8 +248,7 @@ def initial_time_since_disturbance(in_raster, landcover):
 
 def update_time_since_disturbance(time_since_disturbance, new_ponds):
 
-    time_since_disturbance = arcpy.sa.Con(time_since_disturbance,
-                                          arcpy.sa.Con(new_ponds == 1, 1, time_since_disturbance))
+    time_since_disturbance = arcpy.sa.Con(new_ponds == 1, 0, time_since_disturbance)
 
     return time_since_disturbance
 
