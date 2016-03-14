@@ -115,42 +115,6 @@ def create_pond(dem, flow_direction, coordinates, temp_point):
     return pond
 
 
-def sum_ponds(pond_dir):
-    # sum ponds into single raster
-    env.workspace = os.join(pond_dir)
-
-    print env.workspace
-
-    l = arcpy.ListRasters()
-
-    sum = arcpy.Raster(l[0])
-
-    for r in l[1:]:
-        print r
-        sum += arcpy.Raster(r)
-
-    sum_ponds_binary = arcpy.sa.Con(sum > 0, 1, 0)
-
-    return sum_ponds_binary
-
-
-def ponds_to_landcover(ponds, landcover):
-    # arcpy.env.workspace = os.join(output_dir)
-    #
-    # l = arcpy.ListRasters()
-    #
-    # sum = arcpy.Raster(l[0])
-    #
-    # for r in l[1:]:
-    #     print r
-    #     sum += arcpy.Raster(r)
-    #
-    # sum_pond_binary = arcpy.sa.Con(sum > 0, 1, 0)
-
-    landcover = arcpy.sa.Con(ponds == 1, 1,landcover)
-    return landcover
-
-
 def calculate_territory(landcover):
 
     """
@@ -171,7 +135,11 @@ def calculate_territory(landcover):
 def count_ponds(ponds):
 
     """
-    count the current number of beaver ponds
+    count_ponds takes a binary pond raster (pond = 1, no-pond = 0) and uses a region group
+    function to count the number of ponds in the extent. This method returns the number of
+    ponds as an integer and the region_group product as a raster object.
+    :param ponds:
+    :return: pond_count, region_group
     """
 
     # sum_ponds = arcpy.Raster(in_raster)
@@ -219,9 +187,13 @@ def calculate_suitability(streams, landcover, suitability_points):
 
 
 def initial_time_since_disturbance(in_raster, landcover):
-
     """
-    calculate random age
+    This method returns an initial time_since_disturbance raster. time_since_disturbance
+    cells that are coincident with new ponds are assigned random values between 0 and 9,
+    all other cells are iniated with a value of 30.
+    :param in_raster:
+    :param landcover:
+    :return: 0_time_since_disturbance
     """
 
     pond_count = in_raster
@@ -247,7 +219,14 @@ def initial_time_since_disturbance(in_raster, landcover):
 
 
 def update_time_since_disturbance(time_since_disturbance, new_ponds):
-
+    """
+    This method incorporates newly created ponds into the time_since_disturbance raster.
+    Cells in the time since disturbance raster that are coincident with new pond cells
+    (value = 1) are reset to 0.
+    :param time_since_disturbance:
+    :param new_ponds:
+    :return: time_since_disturbance
+    """
     time_since_disturbance = arcpy.sa.Con(new_ponds == 1, 0, time_since_disturbance)
 
     return time_since_disturbance
@@ -256,7 +235,9 @@ def update_time_since_disturbance(time_since_disturbance, new_ponds):
 def succession(age):
 
     """
-    succession
+    succession: this method uses a nested conditional statement
+    to convert the time_since disturbance raster in to a simple community raster.
+    Transition age thresholds are based on Logofet et al. 2015
     """
 
     landcover = arcpy.sa.Con(age >= 30, 3, (arcpy.sa.Con(age >= 10, 2, 1)))
