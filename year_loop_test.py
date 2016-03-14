@@ -36,13 +36,12 @@ for year in range(1, 5):
 
     print 'year %s trial start' % year
 
-
-
     print 'incrementing time since disturbance'
+    # set negative values to null
     time_since_disturbance = arcpy.sa.SetNull(time_since_disturbance <= 0, time_since_disturbance)
 
+    # increment time since disturbance
     time_since_disturbance += 1
-    # time_since_disturbance.save(os.join(output_dir, 'time_since_last_disturbance_%s.tif' % (year + 10)))
 
     print 'updating landcover'
     landcover = succession(time_since_disturbance)
@@ -52,14 +51,15 @@ for year in range(1, 5):
 
     if pond_count < CARRYING_CAPACITY:
         print 'creating new ponds'
+        # calculate number of new ponds to create
         new_ponds = CARRYING_CAPACITY - pond_count
 
         print 'calculating suitable points'
-        # suitability_points = os.join(input_dir, 'suitability_points.shp')
-
+        # delete suitability_points before recalculating suitability
         if arcpy.Exists(suitability_points):
             arcpy.Delete_management(suitability_points)
 
+        # calculate suitability using existing ponds
         calculate_suitability(landcover=landcover,
                               streams=suitable_streams,
                               suitability_points=suitability_points)
@@ -97,8 +97,8 @@ for year in range(1, 5):
             # out_path = os.join(output_dir, 'ponds',('pond_%s.tif' % i))
             # pond.save(out_path)
 
+        # sum pond list
         ponds = arcpy.sa.Con(arcpy.sa.CellStatistics(pond_list, 'SUM') > 0, 1, 0)
-        # print 'ponds', type(ponds)
 
         ponds.save(os.join(output_dir, 'ponds_%s.tif' % year))
 
@@ -106,7 +106,7 @@ for year in range(1, 5):
 
         # landcover = arcpy.Raster(landcover)
         # print 'landcover', type(landcover)
-
+        # update landcover to include newly created ponds
         landcover = ponds_to_landcover(ponds=ponds,
                                        landcover=landcover)
 
