@@ -49,13 +49,18 @@ else:
 # PARAMETERS
 DISTANCE = 800
 CELL_SIZE = 5
+DAM_HEIGHT = 9
 
 
 def assign_pond_locations(constraint, num_points):
+    """
+    This method assigns random locations for each pond that fall within the bounds of
+    suitable habitat.
+    :param constraint:
+    :param num_points:
+    :return:
+    """
 
-    """
-    assign random locations for each pond that fall within the bounds of suitable habitat
-    """
 
     # constraint is the area of all suitable loacations for ponds
     # num_points is the maximum number of ponds that should be assigned
@@ -67,9 +72,11 @@ def assign_pond_locations(constraint, num_points):
 
 
 def dam_points_coordinates(points):
-
     """
-    take points shp and convert to X Y coordinate tuples
+    take points shp and convert to X Y coordinate tuples, this intermediate is needed to
+    create pour points for the watershed tool.
+    :param points:
+    :return: coordinate_list
     """
 
     cursor = arcpy.da.SearchCursor(points, 'SHAPE@XY')
@@ -83,9 +90,15 @@ def dam_points_coordinates(points):
 
 
 def create_pond(dem, flow_direction, coordinates, temp_point):
-
     """
-    create pond raster
+    create a raster with a single pond using watershed tool and conditional statement.
+    The location of the pond is specified by the temp_point argument. DEM must be hydrologicaly
+    conditioned to use this method.
+    :param dem:
+    :param flow_direction:
+    :param coordinates:
+    :param temp_point:
+    :return:
     """
 
     pour_point = arcpy.Point(coordinates[0], coordinates[1])
@@ -100,7 +113,7 @@ def create_pond(dem, flow_direction, coordinates, temp_point):
     # print pour_point_elevation.maximum
 
     # set dam height
-    dam_height = pour_point_elevation.maximum + 9
+    dam_height = pour_point_elevation.maximum + DAM_HEIGHT
     # print dam_height
 
     # calculate watershed for dam
@@ -116,9 +129,12 @@ def create_pond(dem, flow_direction, coordinates, temp_point):
 
 
 def calculate_territory(landcover):
-
     """
-    calculate territory
+    calculate territory creates a euclidean distance buffer using the global DISTANCE
+    parameter. The returned raster is used to exclude areas from the set of points used
+    to create new ponds, ensuring that pond density does not exceed the specified threshold.
+    :param landcover:
+    :return: exclude_territory
     """
 
     landcover_set_null = arcpy.sa.SetNull((landcover == 2) | (landcover == 3), 1)
@@ -163,13 +179,18 @@ def count_ponds(ponds):
 
 
 def calculate_suitability(streams, landcover, suitability_points):
+    """
+    calculate set of suitability points to constrain the potential locations of new ponds.
+    new ponds can only be placed:
+        1) outside the bounds existing beaver territory
+        2) on mapped streams with gradients lower than 15%
+        3) above the highest tidal influence
+    :param streams:
+    :param landcover:
+    :param suitability_points:
+    :return:
+    """
 
-    """
-    calculate suitability points
-    streams
-    landcover
-    suitability_points
-    """
     if type(streams) == str:
         streams = arcpy.Raster(streams)
 
@@ -232,15 +253,16 @@ def update_time_since_disturbance(time_since_disturbance, new_ponds):
     return time_since_disturbance
 
 
-def succession(age):
-
+def succession(time_since_disturbance):
     """
     succession: this method uses a nested conditional statement
     to convert the time_since disturbance raster in to a simple community raster.
-    Transition age thresholds are based on Logofet et al. 2015
+    Transition thresholds are based on Logofet et al. 2015
+    :param time_since_disturbance:
+    :return:
     """
 
-    landcover = arcpy.sa.Con(age >= 30, 3, (arcpy.sa.Con(age >= 10, 2, 1)))
+    landcover = arcpy.sa.Con(time_since_disturbance >= 30, 3, (arcpy.sa.Con(time_since_disturbance >= 10, 2, 1)))
 
     return landcover
 
